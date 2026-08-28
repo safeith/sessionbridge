@@ -1,0 +1,29 @@
+{
+  "name": "sessionbridge",
+  "version": "0.1.0",
+  "description": "Convert and sync AI agent sessions between Claude Code, Kiro, OpenCode, and Pi",
+  "type": "module",
+  "bin": {
+    "sb": "./src/index.ts"
+  },
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "dev": "bun --watch src/index.ts"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "sessions",
+    "claude",
+    "kiro",
+    "opencode",
+    "pi",
+    "sync",
+    "convert",
+    "cli"
+  ],
+  "license": "MIT",
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}
