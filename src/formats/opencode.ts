@@ -162,21 +162,12 @@ export function write(session: CanonicalSession, targetCwd?: string): string {
     const createdMs = session.createdAt ? new Date(session.createdAt).getTime() : now;
     const updatedMs = session.updatedAt ? new Date(session.updatedAt).getTime() : createdMs;
 
-    // Find or create a project for this cwd
-    let projectId = (db.query("SELECT id FROM project WHERE worktree = ?").get(cwd) as any)?.id;
-    if (!projectId) {
-      projectId = crypto.randomUUID();
-      db.run(
-        "INSERT INTO project (id, worktree, time_created, time_updated, sandboxes, name) VALUES (?, ?, ?, ?, ?, ?)",
-        [projectId, cwd, createdMs, updatedMs, "[]", title.slice(0, 40)]
-      );
-    }
-
     const sessionId = "ses_" + crypto.randomUUID().replace(/-/g, "").slice(0, 20);
+    const slug = title.slice(0, 30).replace(/\s+/g, "-").toLowerCase();
     db.run(
-      `INSERT INTO session (id, project_id, slug, directory, title, version, time_created, time_updated)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [sessionId, projectId, title.slice(0, 30).replace(/\s+/g, "-").toLowerCase(), cwd, title, "1.0.0", createdMs, updatedMs]
+      `INSERT INTO session (id, project_id, slug, directory, path, title, version, agent, time_created, time_updated)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [sessionId, "global", slug, cwd, cwd.replace(/^\//, ""), title, "1.0.0", "build", createdMs, updatedMs]
     );
 
     for (const msg of session.messages) {
