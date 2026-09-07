@@ -173,21 +173,38 @@ export function write(session: CanonicalSession, targetCwd?: string): string {
     for (const msg of session.messages) {
       const msgId = "msg_" + crypto.randomUUID().replace(/-/g, "").slice(0, 20);
       const ts = msg.timestamp ? new Date(msg.timestamp).getTime() : now;
+      const msgData = {
+        role: msg.role,
+        time: { created: ts },
+        agent: "build",
+        model: { providerID: "anthropic", modelID: "claude-sonnet-4-5" },
+        summary: { diffs: [] },
+      };
       db.run(
         "INSERT INTO message (id, session_id, time_created, time_updated, data) VALUES (?, ?, ?, ?, ?)",
-        [msgId, sessionId, ts, ts, JSON.stringify({ role: msg.role, time: { created: ts } })]
+        [msgId, sessionId, ts, ts, JSON.stringify(msgData)]
       );
+
+      // Assistant messages need a step-start part before content
+      if (msg.role === "assistant") {
+        const stepId = "prt_" + crypto.randomUUID().replace(/-/g, "").slice(0, 20);
+        db.run(
+          "INSERT INTO part (id, message_id, session_id, time_created, time_updated, data) VALUES (?, ?, ?, ?, ?, ?)",
+          [stepId, msgId, sessionId, ts, ts, JSON.stringify({ type: "step-start" })]
+        );
+      }
 
       for (const block of msg.content) {
         const partId = "prt_" + crypto.randomUUID().replace(/-/g, "").slice(0, 20);
         let partData: any;
 
         if (block.type === "text") {
-          partData = { type: "text", text: block.text };
+          partData = msg.role === "assistant"
+            ? { type: "text", text: block.text, time: { start: ts, end: ts } }
+            : { type: "text", text: block.text };
         } else if (block.type === "tool_use") {
           partData = { type: "tool", callID: block.id, tool: block.name, state: { status: "completed", input: block.input } };
         } else if (block.type === "tool_result") {
-          // Find matching tool part and update its output
           partData = { type: "tool", callID: block.tool_use_id, tool: "result", state: { status: block.is_error ? "error" : "completed", output: block.content } };
         } else {
           continue;
